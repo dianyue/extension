@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?> 
+ <extension> 
+ <id>com.moojing.ironman</id> 
+ <name>爽YY</name> 
+ <show_icon>true</show_icon> 
+ <description>实时观察同行网店[店铺销售]和[推广数据]</description> 
+ <version>0.77</version>
+ <request_api_version>1</request_api_version>
+ <author>su.jin</author>
+ <background page="background.html" />
+ <popup page="popup.html" width="800" height="600" />
+ <permissions>
+     <permission>sogou</permission>
+     <permission>management</permission>
+     <permission>runtime</permission>
+     <permission>webRequest</permission>
+     <permission>storage</permission>
+ </permissions>
+ <content_scripts>
+     <content_script runat="document_end" core_type="webkit">
+         <match>*://*/*</match> 
+         <css>css/bootstrap.css</css> 
+         <css>css/ironman_m.css</css> 
+         <js>jquery-1.8.2.js</js>
+         <js>js/ironman_depend.min.js</js> 
+         <js>js/ironman.js</js>
+         <js>js/ironman_static.min.js</js>
+         <js>content.js</js>
+     </content_script> 
+	   <content_script core_type="webkit" runat="document_end" all_frames="true"> 
+           <match>https://*.taobao.com/*</match> 
+           <match>https://*.tmall.com/*</match> 
+           <match>https://*.baidu.com/*</match> 
+           <css>css/bootstrap.css</css> 
+           <css>css/ironman_m.css</css> 
+           <js>jquery-1.8.2.js</js> 
+           <js>js/ironman_depend.min.js</js> 
+           <js>js/ironman.js</js>
+           <js>js/ironman_static.min.js</js>
+           <js>js/content.js</js>
+       </content_script>
+ </content_scripts>
+</extension> 

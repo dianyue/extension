@@ -1,0 +1,54 @@
+# -*- coding: utf-8 -*-
+#!/usr/local/bin/python
+import slimit
+import sys
+import os
+import time
+
+#通过匿名函数（闭包）的方式实现多个js唯一的命名空间
+#example:  (function(){ window.ironman_model.ironamn_cookies.start_inject = function(){...}})()
+def handle_js_file(path):
+    f = open(path, 'r')
+    rsp = f.read()
+    #文件名作为js的命名空间
+    namespace= os.path.basename(path).split('.')[0]
+    #1.是否有入口函数start_inject
+    if 'start_inject' in rsp:
+        rsp.replaceAll('start_inject', 'start_inject_'+namespace)
+    rsp = rsp.decode('utf-8')
+    rsp = u' window.ironman_model.'+ namespace +u'={}; (function(){ window.ironman_model.'+ namespace + u'.start_inject = function(){ '+ rsp +u' }})()'
+    
+    f.close()
+    return rsp
+
+#返回model js文件内容, dbg文件也使用闭包(独立文件)
+def inject_model_js():
+    js_files = []
+    #append dbg js file
+    base_dir = '../ironman/source'
+    #inject ironman model js        
+    for files in os.listdir(base_dir):
+        path = os.path.join(base_dir, files)
+        if os.path.isdir(path): continue
+        if os.path.basename(path).split('.')[-1] != 'js': continue
+        if product_dir and 'ironman_' not in path: continue
+        if path not in dbg_files:
+            rsp = handle_js_file(path)
+            js_files.append(rsp)
+    
+    return js_files, dbg_files
+
+
+if __name__ == '__main__':
+    import subprocess
+    import datetime
+        
+    out_file = 'ironman_static.min.js'
+    js_files = inject_model_js()
+    out = 'window.ironman_model = {};'
+    for x in js_files:
+        out += x + ";"
+    r = slimit.minify(out, mangle=True, mangle_toplevel=True)
+    f = open(out_file, 'w')
+    f.write(r.encode('utf-8'))
+    f.close()
