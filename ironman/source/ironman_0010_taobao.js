@@ -206,23 +206,29 @@ var parseItemDetailWW = function(ww_raw){
 	//console.log("get ww from timer", ww_raw);
 };
 
+var item_ww_timer;
+
 //show single item mojing data for taobao item detail url
 var handle_item_detail = function() {
     var m = /id=(\d+)/.exec(window.location);
     if (m == null) { return; }
     var item_id = m[1];
-
+    
     var ww_node = $('.ww-light');
     var ww_raw;
     var is_tmall = /(detail\.tmall\.com|95095\.com|detail\.tmall\.hk\/hk)\/item\.htm/.exec(window.location);
-    try{
-    	if(is_tmall){
- 		   ww_raw = /sellerNickName\"*:\"([\%a-zA-Z0-9]+)\",/.exec(document.documentElement.innerHTML)[1];
- 	   }else{
- 		   ww_raw = /sellerNick\s*:\s*'(.*)',/.exec(document.documentElement.innerHTML)[1];
- 	   }
-    }catch(err){
-    	console.log("g_config ", err);
+    if(/chaoshi\.detail\.tmall\.com/.exec(window.location)){
+    	ww_raw = "天猫超市";
+    }else{
+    	try{
+        	if(is_tmall){
+     		   ww_raw = /sellerNickName\"*:\"([\%a-zA-Z0-9]+)\",/.exec(document.documentElement.innerHTML)[1];
+     	   }else{
+     		   ww_raw = /sellerNick\s*:\s*'(.*)',/.exec(document.documentElement.innerHTML)[1];
+     	   }
+        }catch(err){
+        	console.log("g_config ", err);
+        }
     }
     
     if(!ww_raw){
@@ -231,11 +237,8 @@ var handle_item_detail = function() {
     	}else if($('.J_WangWang')[0]){
     		ww_raw =  $('.J_WangWang').data('nick');
     	}else{
-    		var timer;
-    		while(!ww_raw){
-    			if(timer) clearTimeout(timer);
-    			timer = setTimeout(parseItemDetailWW, 200, [ww_raw]);
-    		}
+    	    if(item_ww_timer) clearTimeout(item_ww_timer);
+    		item_ww_timer = setTimeout(handle_item_detail, 1000);
     	}
     }
     var ww = decodeURIComponent(ww_raw);
@@ -1231,7 +1234,7 @@ handle_shop_detail = function() {
             	ww_item_list.push([ww, '' + m[1]]);
             }
         });
-    }else {
+    }else if(/search\.htm/.exec(location.href)) {
         $('.main-wrap .skin-box-bd .item').each(function(i, o) {
             $(o).prepend(
                 '<div class="ironman-container ironman-item-info">' +

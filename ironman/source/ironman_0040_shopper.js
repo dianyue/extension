@@ -1,5 +1,4 @@
 
-var is_tmall = false;
 var orders_trend;
 var order_url;
 var skuMap;
@@ -14,9 +13,7 @@ if(pat_item_detail.exec(window.location) && window == window.top) {
 var pat_tmall = /(detail\.tmall\.com|95095\.com|detail\.tmall\.hk\/hk)\/item\.htm/;
 
 function get_sku_info(){
-  if(pat_tmall.exec(location.href)) {
-      is_tmall = true;
-  }
+  var is_tmall = /(detail\.tmall\.com|95095\.com|detail\.tmall\.hk\/hk)\/item\.htm/.exec(window.location);
   if(is_tmall){
 	  order_url = $('#J_listBuyerOnView').data('api');
 	  if(order_url == null || order_url == undefined) {
@@ -109,6 +106,7 @@ function inject_table() {
 function get_onshelf_time() {
     var d = new Date();
     var timeleft;
+    var is_tmall = /(detail\.tmall\.com|95095\.com|detail\.tmall\.hk\/hk)\/item\.htm/.exec(window.location);
     if(is_tmall) {
     	var obj = dy_$('#J_listBuyerOnView');
     	if(obj[0]){
@@ -189,8 +187,10 @@ var parseItemDetailWW = function(ww_raw){
 	//console.log("get ww from timer", ww_raw);
 };
 
-function inject_module() {
+var item_ww_timer;
 
+function inject_module() {
+   if(item_ww_timer) clearTimeout(item_ww_timer);
    var item_id = /id=(\d+)/.exec(window.location)[1];
 
    $('#ironman_shopper').remove();
@@ -198,16 +198,14 @@ function inject_module() {
    
    var ww_node = $('.ww-light');
    var ww_raw;
-   try{
-	   if(is_tmall){
-		   ww_raw = /sellerNickName\"*:\"([\%a-zA-Z0-9]+)\",/.exec(document.documentElement.innerHTML)[1];
-	   }else{
-		   ww_raw = /sellerNick\s*:\s*'(.*)',/.exec(document.documentElement.innerHTML)[1];
-	   }
-   	//console.log("get ww from g_config", ww_raw);
-   }catch(err){
-   	console.log("g_config ", err);
-   }
+   var is_tmall = /(detail\.tmall\.com|95095\.com|detail\.tmall\.hk\/hk)\/item\.htm/.exec(window.location);
+   if(/chaoshi\.detail\.tmall\.com/.exec(window.location)){
+   	   ww_raw = "天猫超市";
+   }else if(is_tmall){
+	   ww_raw = /sellerNickName\"*:\"([\%a-zA-Z0-9]+)\",/.exec(document.documentElement.innerHTML)[1];
+   }else{
+	   ww_raw = /sellerNick\s*:\s*'(.*)',/.exec(document.documentElement.innerHTML)[1];
+   }	
    
    if(!ww_raw){
    	if(ww_node[0]){
@@ -215,11 +213,7 @@ function inject_module() {
    	}else if($('.J_WangWang')[0]){
    		ww_raw =  $('.J_WangWang').data('nick');
    	}else{
-   		var timer;
-   		while(!ww_raw){
-   			if(timer) clearTimeout(timer);
-   			timer = setTimeout(parseItemDetailWW, 200, [ww_raw]);
-   		}
+   		item_ww_timer = setTimeout(inject_module, 1000);
    	}
    }
 
