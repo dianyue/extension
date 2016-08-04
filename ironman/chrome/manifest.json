@@ -1,7 +1,7 @@
 ﻿{
     "name": "爽YY",
     "description": "网店研究和关键词研究的好帮手",
-    "version": "0.77",
+    "version": "0.79",
     "permissions": ["cookies", "contextMenus", "tabs", "*://*/*", "storage"],
     "background": {
         "scripts": ["jquery-1.8.2.js", "init.js"]

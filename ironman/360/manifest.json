@@ -1,7 +1,7 @@
 ﻿{
     "name": "魔镜",
     "description": "网店研究和关键词研究的好帮手",
-    "version": "0.77",
+    "version": "0.79",
     "update_url": "http://upext.chrome.360.cn/intf.php?method=ExtUpdate.query",
     "permissions": ["cookies", "contextMenus", "tabs", "*://*/*", "storage"],
     "background": {

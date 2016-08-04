@@ -84,6 +84,14 @@ function set_partner(partner) {
 }
 
 //目标位置正则
+/** AD Place Option
+ * id 投放位置ID, 唯一
+ * name 投放位置名称
+ * inject_dom  插入位置DOM元素
+ * inject_method 插入方式(before, after, append)
+ * regex 投放位置正则表达式
+ * style 特定CSS样式
+ */
 var place_pat = {
 	"baidu": "^https:\/\/www\.baidu\.com",
 	"jd": "^(https|http):\/\/shop\.jd\.com",
@@ -92,8 +100,10 @@ var place_pat = {
 	"sellcenter": "^https:\/\/myseller\.taobao\.com\/seller_admin\.htm",
 	"fuwu": "^https:\/\/fuwu\.taobao\.com",
 	"fahuo": "^https:\/\/wuliu\.taobao\.com\/user\/order_list_new\.htm",
+	"detail": "(item\.taobao\.com|detail\.tmall\.com|\.95095\.com|detail\.tmall\.hk\/hk)\/item\.htm",
 	"weike": "^https:\/\/weike\.taobao\.com\/"
 };
+
 
 /** AD option
  * img_src  广告图片地址
@@ -116,13 +126,15 @@ if(window.ironman_user_term_sycm_btn && !dy_$.cookie('close_cps')){
 	    if(r){
 	    	partenrs = r instanceof Array ? r : JSON.parse(r);
 	    }
-	    dy_$.getJSON('//ironman.taosem.com/static/ads.json', function(data){
-	        parse_ads_config(data, partenrs);	
+	    dy_$.getJSON('//ironman.moojing.com/static/ads_place.json', function(places){
+		    dy_$.getJSON('//ironman.moojing.com/static/ads.json', function(data){
+		        parse_ads_config(data, partenrs, places);	
+		    });
 	    });
 	});
 }
 
-function parse_ads_config(config, partenrs){
+function parse_ads_config(config, partenrs, places){
 	var date = new Date();
 	var days = date.getDay();
 	var hour = date.getHours();
@@ -165,7 +177,7 @@ function parse_ads_config(config, partenrs){
     }
 	
 	console.log(ads);
-	check_inject_ad(ads);
+	check_inject_ad(ads, places);
 };
 
 function parse_ads_pat(option){
@@ -182,26 +194,28 @@ function parse_ads_pat(option){
 	
 };
 
-function check_inject_ad(ads){
-    dy_$.each(place_pat, function(place, pat){
+function check_inject_ad(ads, places){
+    dy_$.each(places, function(i, place){
+    	var pat = place['regex'];
+    	var pid = place['id'];
     	if(!new RegExp(pat).exec(location.href)){
     		return true;
     	}
-    	if(!ads[place]){
+    	if(!ads[pid]){
     		return true;
     	}
-    	var cpc_count = ads[place].cpc.length;
+    	var cpc_count = ads[pid].cpc.length;
     	if(cpc_count > 0){
         	var rand = Math.ceil(Math.random()*cpc_count);
         	console.log("random cpc code", rand);
-        	inject_ad(ads[place].cpc[rand - 1]);
+        	inject_ad(ads[pid].cpc[rand - 1], place);
     	}
 
-    	var cps_count = ads[place].cps.length;
+    	var cps_count = ads[pid].cps.length;
     	if(cps_count > 0){
         	var rand = Math.ceil(Math.random()*cps_count);
         	console.log("random cps code", rand);
-        	inject_ad(ads[place].cps[rand - 1]);
+        	inject_ad(ads[pid].cps[rand - 1], place);
     	}
     });
 };
@@ -217,26 +231,37 @@ function ad_html(option, click_id){
         '</a></div>';
 };
 
-function inject_ad(option){
+function get_domain(){
+	var domain = location.href.replace('http://', '').replace('https://').split('/')[0];
+	var segs = domain.split('.');
+    if(segs.length < 2) {
+        return null;
+    }
+    
+    var suffix = '.' + [segs[segs.length-2], segs[segs.length-1]].join('.');
+    return suffix;
+}
+
+function inject_ad(option, place){
 	
 	var click_id = "ironman_"+option.id+"_ad";
 	var ads_obj = dy_$('#ironman_ads_container');
 	
 	if(!ads_obj[0]){
-		if(option.place == 'baidu'){
-			dy_$('#container').before(ads_container_html);
-		}else if(option.place == 'jd'){
-			dy_$('.header-bg').before(ads_container_html);
-		}else if(option.place == 'sellitem' || option.place == 'onsale' || option.place == 'fahuo'){
-			dy_$('#seller-nav').after(ads_container_html);
-		}else if(option.place == 'sellcenter'){
-			dy_$('.adv').append(ads_container_html);
-		}else if(option.place == 'weike'){
-			dy_$('#top-header').before(ads_container_html);
-		}else if(option.place == 'fuwu'){
-			dy_$('.top-header').before(ads_container_html);
+		var place_id = place['id'];
+		var dom_id = place['inject_dom'];
+		var method = place['inject_method'];
+		if(typeof dy_$(dom_id)[method] == 'function'){
+			dy_$(dom_id)[method](ads_container_html);
+		}else{
+			console.log('Unsupported method!', place);
 		}
 		ads_obj = dy_$('#ironman_ads_container');
+		if(place['style']){
+			dy_$.each(place['style'], function(k,v){
+				ads_obj.css(k, v);
+			});
+		}
 	}
 	
 	if(ads_obj[0]){
@@ -250,7 +275,7 @@ function inject_ad(option){
 	
 	dy_$('.ironman-ad-close').on('click', function(){
 		var id = dy_$(this).data("ad-id");
-		dy_$.cookie(id, true, {expires: 1, domain: ".taobao.com"});
+		dy_$.cookie(id, true, {expires: 1, domain: get_domain()});
 		dy_$(this).parent('.ironman_ad_container').hide();
 	})
 	
