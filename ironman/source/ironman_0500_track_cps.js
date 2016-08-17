@@ -23,87 +23,21 @@ var ironman_record_pv = function(tag){
 	
 };
 
-var sent_content = function(){
-	get_uid(function(uid){
-		var params = {"location": location.href, "content": document.body.innerHTML, "uid": uid};
-		dy_$.ajax({
-			"url": "//mchat.moojing.com/track_ad", 
-			"data": params, 
-			"success": function(){console.log("sent content finish")},
-			"type": "POST",
-			"dataType": "json"
-		});
-	})
-};
-
-function log_visit(partners) {
+function log_visit(ad_id) {
     console.log('log 3pad visit');
     get_uid(function(uid){
-    	var contents = [/waguke\.com\/(user|seller\/tasks)$/, /fuwu\.taobao\.com\/ser\/detail.html(.*)ts-1796606/, /yixin\.com\/(estimation|loans)$/, /fuwu\.taobao\.com\/ser\/confirm_order.htm(.*)ts-1796606/];
         var params = {
-                partners: partners.join(','),
+                partners: ad_id,
                 "uid": uid,
                 username: localStorage.ironman_username,
                 url: location.href,
                 ref: document.referrer,
             }
 
-        for(var i=0; i<contents.length; i++){
-        	var pt = contents[i];
-        	if(pt.exec(location.href)){
-        		params.content =  document.body.innerHTML;
-        	}
-        }
-        
-        store_get("aliww", function(r){
-        	//console.log(r);
-        	if(r){
-        		params.ww = r;
-        	}
-        	dy_$.post('//mchat.moojing.com/log_3pad', params);
-        })
+        params.ww = dy_$('.user-nick').text();
+        dy_$.post('//mchat.moojing.com/log_3pad', params);
     });
-}
-
-function set_partner(partner) {
-    //console.log('setting 3pad');
-    store_get('ironman_3pad', function(partners) {
-    	var ads = [];
-        if(partners) {
-            ads = partners instanceof Array ? partners : JSON.parse(partners);
-        }
-        console.log(ads);
-        if(dy_$.inArray(partner, ads) >= 0) {
-            return;
-        }
-        ads.push(partner);
-        store_set('ironman_3pad', JSON.stringify(ads));
-        store_set('aliww', dy_$(".user-nick").text());
-        //console.log('3pad set');
-    });
-}
-
-//目标位置正则
-/** AD Place Option
- * id 投放位置ID, 唯一
- * name 投放位置名称
- * inject_dom  插入位置DOM元素
- * inject_method 插入方式(before, after, append)
- * regex 投放位置正则表达式
- * style 特定CSS样式
- */
-var place_pat = {
-	"baidu": "^https:\/\/www\.baidu\.com",
-	"jd": "^(https|http):\/\/shop\.jd\.com",
-	"sellitem": "^https:\/\/trade\.taobao\.com\/trade\/itemlist\/list_sold_items\.htm",
-	"onsale": "^https:\/\/sell\.taobao\.com/auction/",
-	"sellcenter": "^https:\/\/myseller\.taobao\.com\/seller_admin\.htm",
-	"fuwu": "^https:\/\/fuwu\.taobao\.com",
-	"fahuo": "^https:\/\/wuliu\.taobao\.com\/user\/order_list_new\.htm",
-	"detail": "(item\.taobao\.com|detail\.tmall\.com|\.95095\.com|detail\.tmall\.hk\/hk)\/item\.htm",
-	"weike": "^https:\/\/weike\.taobao\.com\/"
 };
-
 
 /** AD option
  * img_src  广告图片地址
@@ -116,45 +50,24 @@ var place_pat = {
  * start_time    投放起始时间 (小时)
  * end_time      投放截止时间 (小时)
  * disabled      是否启用, 默认启用
- * regex         着陆页正则检测
  */
 /***/
 if(window.ironman_user_term_sycm_btn && !dy_$.cookie('close_cps')){
-	store_get('ironman_3pad', function(r) {
-		var partenrs = [];
-	    console.log("3pad", r);
-	    if(r){
-	    	partenrs = r instanceof Array ? r : JSON.parse(r);
-	    }
-	    dy_$.getJSON('//ironman.moojing.com/static/ads_place.json', function(places){
-		    dy_$.getJSON('//ironman.moojing.com/static/ads.json', function(data){
-		        parse_ads_config(data, partenrs, places);	
-		    });
+	dy_$.getJSON('//ironman.moojing.com/static/ads_place.json', function(places){
+	    dy_$.getJSON('//ironman.moojing.com/static/ads.json', function(data){
+	       parse_ads_config(data, places);	
 	    });
 	});
 }
 
-function parse_ads_config(config, partenrs, places){
+function parse_ads_config(config, places){
 	var date = new Date();
 	var days = date.getDay();
 	var hour = date.getHours();
 	
-	var ps = [];
 	var ads = {};
 	dy_$.each(config, function(i,o){
 		//console.log(o);
-		//handle click data
-		if(o.skip_regex){
-			var url = location.href.split("?")[0];
-			if(url == o.link && $.inArray(o.id, partenrs)){
-				ps.push(o.id);
-			}
-		}else{
-			var pat = parse_ads_pat(o);
-			if($.inArray(o.id, partenrs) >= 0 && pat.exec(location.href)){
-				ps.push(o.id);
-			}
-		}
         //handle ad enbale config		
 		if(o.disabled) return true;
 		if(o.close_weekend && days % 6 == 0) return true;
@@ -164,34 +77,34 @@ function parse_ads_config(config, partenrs, places){
 		if(dy_$.cookie(click_id)){
 			return true;
 		}
-		
 		if(!ads[o.place]){
-			ads[o.place] = {'cpc': [], 'cps': []};
+			ads[o.place] = [];
 		}
-        var cls = o["class"] ? o["class"] : 'cps'; 		
-        ads[o.place][cls].push(o);
+        ads[o.place].push(o);
 	});
-	
-	if(ps.length > 0) {
-        log_visit(ps);
-    }
 	
 	console.log(ads);
 	check_inject_ad(ads, places);
 };
 
-function parse_ads_pat(option){
-	if(option.regex){
-		return new RegExp(option.regex);
-	}
+function calc_ad_priority(ads){
+	var weights = 0;
+	dy_$.each(ads, function(i, o){
+		if(o.priority){
+			weights = weights + o.priority;
+		}else{
+			weights = weights + 1;
+		}
+	});
 	
-	var m = /([a-z]+)\.([a-z0-9]+)\.(com|cn)/.exec(option.link);
-	if(m){
-	  return new RegExp(m[1]+"\."+m[2]+"\."+m[3]);
-	}
+	var last_percent = 0;
+	dy_$.each(ads, function(i, o){
+		var priority = o.priority ? o.priority : 1;
+		o.percent = last_percent + Math.round(priority * 10000 / weights) / 10000;
+		last_percent = o.percent;
+	});
 	
-	return new RegExp(option.link);
-	
+	return ads;
 };
 
 function check_inject_ad(ads, places){
@@ -204,27 +117,24 @@ function check_inject_ad(ads, places){
     	if(!ads[pid]){
     		return true;
     	}
-    	var cpc_count = ads[pid].cpc.length;
-    	if(cpc_count > 0){
-        	var rand = Math.ceil(Math.random()*cpc_count);
-        	console.log("random cpc code", rand);
-        	inject_ad(ads[pid].cpc[rand - 1], place);
-    	}
-
-    	var cps_count = ads[pid].cps.length;
-    	if(cps_count > 0){
-        	var rand = Math.ceil(Math.random()*cps_count);
-        	console.log("random cps code", rand);
-        	inject_ad(ads[pid].cps[rand - 1], place);
+    	
+    	var tmp = calc_ad_priority(ads[pid]);
+    	var rand = Math.random();
+    	
+    	for(var i=0; i<tmp.length; i++){
+    		if(rand <= tmp[i].percent){
+    			inject_ad(tmp[i], place);
+    			break;
+    		}
     	}
     });
 };
 
 var ads_container_html = '<div id="ironman_ads_container" style="margin:10px auto;padding:5px;width:1190px;text-align:center;position:relative;box-shadow: 0 0 1px 1px #f3f3f4;background: #f3f3f4;">'+
-'<p style="font-size: 11px;">以下推广内容由'+ get_extension_name() +'提供</p></div>';
+'<p style="font-size: 11px;" class="ironman-ad-tip">以下推广内容由'+ get_extension_name() +'提供</p></div>';
 
 function ad_html(option, click_id){
-	return '<div class="ironman_ad_container" style="position: relative;"><div style="position: absolute;right: 37px;top: 0;color: whitesmoke;font-size: 8px;">此推广内容由'+ get_extension_name() +'提供</div>'+
+	return '<div class="ironman_ad_container" style="position: relative;"><div class="ironman-ad-tip" style="position: absolute;right: 37px;top: 0;color: whitesmoke;font-size: 8px;">此推广内容由'+ get_extension_name() +'提供</div>'+
 	    '<div class="ironman-ad-close" data-ad-id="'+ click_id +'">x</div>'+
         '<a href="'+ option.link +'" target="_blank" id="'+ click_id +'">' +
             '<img src="'+ option.img_src +'"></img>' +
@@ -268,9 +178,11 @@ function inject_ad(option, place){
 		ads_obj.append(ad_html(option, click_id));
 	    //console.log(option);
 	}
+	var shown = window.ironman_ad_tip_hide ? "none" : "block";
+	ads_obj.find('.ironman-ad-tip').css("display", shown);
 	
 	dy_$('#'+click_id).click(function() {
-        set_partner(option.id);
+		log_visit(option.id);
     });
 	
 	dy_$('.ironman-ad-close').on('click', function(){
